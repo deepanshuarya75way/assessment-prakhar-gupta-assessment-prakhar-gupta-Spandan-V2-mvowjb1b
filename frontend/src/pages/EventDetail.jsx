@@ -32,6 +32,7 @@ export default function EventDetail() {
   const [teamMembers, setTeamMembers] = useState([]);
   const [checkingPid, setCheckingPid] = useState(false);
   const [eventRules, setEventRules] = useState([]);
+  const [customAnswers, setCustomAnswers] =useState({})
 
   const normalizePid = (value) => {
     const cleaned = String(value || "").toUpperCase().replace(/\s+/g, "");
@@ -50,6 +51,7 @@ export default function EventDetail() {
       try {
         const { data } = await API.get(`/events/${id}`);
         setEvent(data);
+        console.log("custom questions",data.customQuestions)
         const rulesRes = await API.get("/rules");
         const matched = rulesRes.data.filter(
           (s) => s.title.trim().toLowerCase() === data.title.trim().toLowerCase()
@@ -289,6 +291,53 @@ export default function EventDetail() {
                         className="input"
                       />
                     </div>
+                    {Array.isArray(event.customQuestions)&& event.customQuestions.length>0 && (
+                      <div  className="border-t pt-4 space-y-4">
+                        <h3>Custom Registration Questions</h3>
+                        {
+                          event.customQuestions.map((question,index)=>(
+                            <div key={index}>
+                              <label className="block text-sm font-medium mb-1">{question.label}{question.required && "*"}</label>
+                              {
+                                question.type==="textarea"?(
+                                  <textarea
+                                  className="input"
+                                  value={customAnswers[index]||""}
+                                  requires={question.required}
+                                  onChange={(e)=>{
+                                    const value=e.target.value;
+                                    setCustomAnswers((prev)=>({
+                                      ...(prev ||{}),
+                                      [index]:value,
+                                    }))
+                                  }
+                                }
+                                />
+                                ):(
+                                  <input
+                                  className="input"
+                                  type="text"
+                                  value={customAnswers[index]||""}
+                                  required={question.required}
+                                  onChange={(e)=>{
+                                    const value=e.target.value
+                                    setCustomAnswers((prev)=>({
+                                      ...(prev ||{}),
+                                      [index]:value
+                                    }))
+                                  }
+                                  }
+                                  />
+
+                                )
+                              }
+                        
+                      </div>
+                      ))
+                    },
+
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm text-[#41431B] mb-1.5">
                         Add Members by PID <span className="text-[#41431B]/70">({teamMembers.length + 1}/{event.teamSize?.max || 4})</span>

@@ -22,6 +22,7 @@ export default function EventForm() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [loading, setLoading] = useState(false);
+  const [customQuestions,setCustomQuestions]=useState([])
   // Removed rules/coordinators per request
 
   useEffect(() => {
@@ -42,6 +43,10 @@ export default function EventForm() {
             teamSizeMin: String(event.teamSize?.min || 1),
             teamSizeMax: String(event.teamSize?.max || 4),
           });
+          setCustomQuestions(
+            Array.isArray(event.customQuestions)?
+            event.customQuestions:[]
+          )
           if (event.image?.url) setImagePreview(event.image.url);
         }
       });
@@ -86,6 +91,7 @@ export default function EventForm() {
       fd.append("teamSize", JSON.stringify({ min: parseInt(form.teamSizeMin) || 1, max: parseInt(form.teamSizeMax) || 4 }));
     }
     if (imageFile) fd.append("image", imageFile);
+    fd.append("customQuestions",JSON.stringify(customQuestions))
 
     try {
       if (isEdit) {
@@ -217,6 +223,162 @@ export default function EventForm() {
             <input type="file" accept="image/*" onChange={handleImage} className="hidden" />
           </label>
         </div>
+
+        {/*custom Registration Questions */}
+        <div className="card p-6">
+            <h2 className="mb-4 text-lg font-semibold text-[#41431b]">Custom Registrtion Questions</h2>
+            
+              {(Array.isArray(customQuestions)?customQuestions:[]).map((question, index)=>(
+                <div key={index} className="mb-4 rounded-lg border p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-medium">Question{index+1}</h3>
+                    <button
+                    type="button"
+                    className="text-red-600"
+                    onClick={
+                      ()=>setCustomQuestions((previous)=>previous.filter((_,i)=>i!==index))
+                    }>Remove</button>
+                  </div>
+                  <label className="mb-1 block text-sm">Question text</label>
+                  <input
+                    className="input mb-3"
+                    value={question?.label ||""}
+                    onChange={(e)=>
+                      setCustomQuestions((previous)=>
+                        previous.map((q,i)=>
+                          i===index? {...q, label:e.target.value}:q))
+                    }
+                    placeholder="eg. What is your Department?"
+                    required
+                  />
+                  <label className="mb-1 block text-sm">Question type</label>
+                  <select
+                    className="input mb-3"
+                    value={customQuestions[index]?.type || "text"}
+                    onChange={(e)=>
+                      setCustomQuestions((previous)=>
+                      previous.map((q,i)=>
+                      i===index
+                      ?{
+                        ...q,
+                        type:e.target.value,
+                        options:
+                        e.target.value==="select"||
+                        e.target.value==="radio"||
+                        e.target.value==="checkbox"
+                        ?q.options ||[""]
+                        :[],
+                      }
+                      :q
+                      )
+                    )
+                    }
+                  >
+                    <option value="text">Short text</option>
+                    <option value="textarea">Long text</option>
+                    <option value="number">number</option>
+                    <option value="select">DropDown</option>
+                    <option value="radio">Single Chance</option>
+                    <option value="radio">Single Chance</option>
+                    <option value="checkbox">Multiple Choice</option>
+                  </select>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox"
+                      checked={Boolean(question.requires)}
+                      onChange={(e)=>{
+                        const checked=e.target.checked
+                        setCustomQuestions((previous)=>(Array.isArray(previous)?previous:
+                        []).map((q,i)=>
+                          i===index?{...q,required:checked}:q))
+                      }
+                    }
+                    />
+                  Required question
+                  </label>
+                  {["select","radio","checkbox"].includes(question.type)&&(
+                    <div className="mt-3">
+                      <label className="mb-1 block text-sm">
+                        Options(one per line)
+                      </label>
+                      <textarea className="input"
+                      rows={3}
+                      value={(question.options || []).join("\n")}
+                      onChange={(e)=>
+                        setCustomQuestions((previous)=>
+                        previous.map((q,i)=>
+                        i===index
+                      ?{
+                        ...q,
+                        options:e.target.value.split("\n"),
+                      }
+                      :q
+                    )
+                   )
+                      }
+                      placehholder={"option1\noption2\noption3"}
+                      />
+                    </div>
+                  )}
+                  
+                   <div className="mb-3 flex gap-2">
+                    <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={index===0}
+                    onClick={
+                      ()=>
+                        setCustomQuestions((previous)=>{
+                          const updated=[...previous];
+                          [updated[index-1],updated[index]]=[
+                            updated[index],
+                            updated[index-1],
+                          ]
+                          return updated
+                        })
+                    }>Move up</button>
+
+                    <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={index===customQuestions.length-1}
+                    onClick={
+                      ()=>
+                        setCustomQuestions((previous)=>{
+                          const updated=[...previous];
+                          [updated[index],updated[index+1]]=[
+                            updated[index+1],
+                            updated[index],
+                          ]
+                          return updated
+                        })
+                    }>Move Down</button>
+
+                  </div>
+                </div>
+              ))
+            }
+            <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={
+                      ()=>
+                        setCustomQuestions((previous)=>[
+                          ...(Array.isArray(previous)?previous:[]),
+                          {
+                            questionId: crypto.randomUUID(),
+                            label:"",
+                            type:"text",
+                            required:false,
+                            options:[],
+                            order:Array.isArray(previous)?
+                            previous.length:0,
+                            conditions:[]
+                          }
+                        ])
+                    }>+Add Question
+              </button>
+        </div>
+
 
         {/* Submit */}
         <div className="flex gap-3">

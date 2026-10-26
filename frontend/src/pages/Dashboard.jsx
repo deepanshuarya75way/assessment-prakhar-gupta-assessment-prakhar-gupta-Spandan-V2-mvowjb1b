@@ -172,6 +172,14 @@ export default function Dashboard() {
           }
 
           const wrappedName = doc.splitTextToSize(eventName, contentWidth - 140);
+          const customAswers=Array.isArray(reg.customAswers)
+          ?reg.customAnswers
+          :[];
+          customAnswers.forEach((item)=>{
+            detailLines.push(
+              `${item.questionLabel || item.question || "Question"}:${item.answer ??"-"}`
+            )
+          })
           const wrappedDetails = detailLines.flatMap((line) => doc.splitTextToSize(line, contentWidth - 140));
           const contentLines = [...wrappedName, ...wrappedDetails];
           const rowHeight = Math.max(24, contentLines.length * 14 + 10);

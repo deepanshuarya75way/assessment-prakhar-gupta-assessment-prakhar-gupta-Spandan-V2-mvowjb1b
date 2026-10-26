@@ -86,8 +86,70 @@ router.post("/:eventId", isAuthenticated, async (req, res) => {
     }
 
     const event = await Event.findById(req.params.eventId);
+    
     if (!event) return res.status(404).json({ error: "Event not found" });
     if (!event.isListed) return res.status(400).json({ error: "Event is not open for registration" });
+
+    //check for answers
+    const customAnswers=req.body.customAnswers || []
+    if(!Array.isArray(customAnswers)){
+      return res.status(400).json({
+        error:"Custom Answers must be an Array"
+      })
+    }
+    const answerMap=new Map(
+      customAnswers.map(item=>[
+        String(item.questionId),
+        item.answer
+      ])
+    )
+    const isVisible=(question)=>{
+      if(!question.conditions || question.conditions.length ===0){
+        return true
+      }
+      return question.conditons.every(condition=>{
+        const actual=answerMap.get(String(condtion.questionId))
+        const expected=condition.value
+        if(condition.operator==="equals"){
+          return String(actual??"")===String(expected??"")
+        }
+        if(condition.operator==="notEquals"){
+          return String(actual??"")===String(expected??"")
+        }
+         if(condition.operator==="contains"){
+          return Array.isArray(actual)?actual.map(String).includes(String(expected))
+          :String(actual??"").includes(String(expected))
+        }
+        return false
+      })
+    }
+
+    const visibleQuestions=(event.customQuestions || [])
+    .filter(isVisible)
+
+    for(const question of visibleQuestions){
+      const item=answer.map.get(String(question.questionId))
+      const empty=item===undefined || item===null || item ==="" || (Array.isArray(item) && item.length===0)
+
+      if(question.required && empty){
+        return res.status(400).json({
+          error:`Please Answer:${question.label}`
+        })
+      }
+    }
+    const validQuestionIds=new Set(visibleQuestions.map(q=>String(q.questionId)))
+    const savedCustomAnswers=customAnswers.filter(item=>validQuesitonIds.has(String(item.questionId)))
+                                          .map(item=>{
+                                            const question=visibleQuestions.find(
+                                              q=>String(q.questionId)===String(item.questionId)
+                                            )
+
+                                            return{
+                                              questionId:String(item.questionId),
+                                              questionLabel:question.Label,
+                                              answer:item.answer
+                                            }
+                                          })
     // Check if event is full: each registration counts as 1 team slot
     const currentRegistrations = await Registration.countDocuments({ event: req.params.eventId, status: { $ne: "cancelled" } });
     if (currentRegistrations + 1 > event.maxParticipants) {
@@ -117,6 +179,7 @@ router.post("/:eventId", isAuthenticated, async (req, res) => {
       user: req.user._id,
       event: req.params.eventId,
       pid: req.user.pid,
+      customAnswers:savedCustomAnswers
     };
 
     // Handle group events

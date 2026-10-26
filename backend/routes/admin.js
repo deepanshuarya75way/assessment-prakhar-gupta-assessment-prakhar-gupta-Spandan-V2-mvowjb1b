@@ -7,7 +7,33 @@ const Event = require("../models/Event");
 const User = require("../models/User");
 const Registration = require("../models/Registration");
 const { isAdmin } = require("../middleware/adminAuth");
+const crypto=require("crypto")
 
+function parseCustomQuestions(value) {
+  if (value === undefined || value === null || value === "") {
+    return [];
+  }
+
+  const questions =
+    typeof value === "string" ? JSON.parse(value) : value;
+
+  if (!Array.isArray(questions)) {
+    throw new Error("customQuestions must be an array");
+  }
+
+  return questions.map((question, index) => ({
+    ...question,
+    questionId: question.questionId || crypto.randomUUID(),
+    order: Number.isFinite(Number(question.order))
+      ? Number(question.order)
+      : index,
+    options: Array.isArray(question.options) ? question.options : [],
+    required: Boolean(question.required),
+    conditions: Array.isArray(question.conditions)
+      ? question.conditions
+      : [],
+  }));
+}
 // Recompute registeredCount per event from active registrations
 async function recomputeRegisteredCounts() {
   const counts = await Registration.aggregate([
@@ -218,7 +244,8 @@ router.get("/events", isAdmin, async (req, res) => {
 // ── CREATE EVENT ───────────────────────────────────────────
 router.post("/events", isAdmin, upload.single("image"), async (req, res) => {
   try {
-    const { title, description, theme, category, date, time, venue, maxParticipants, participationType, teamSize } = req.body;
+    const { title, description, theme, category, date, time, venue, maxParticipants, participationType, teamSize,
+      customQuestions} = req.body;
 
     const eventData = {
       title,
@@ -231,6 +258,7 @@ router.post("/events", isAdmin, upload.single("image"), async (req, res) => {
       maxParticipants: parseInt(maxParticipants),
       participationType: participationType || "solo",
       createdBy: req.user._id,
+      customQuestions:parseCustomQuestions(customQuestions)
     };
 
     if (participationType === "group" && teamSize) {
@@ -267,7 +295,7 @@ router.put("/events/:id", isAdmin, upload.single("image"), async (req, res) => {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ error: "Event not found" });
 
-    const { title, description, theme, category, date, time, venue, maxParticipants, participationType, teamSize } = req.body;
+    const { title, description, theme, category, date, time, venue, maxParticipants, participationType, teamSize, customQuestions } = req.body;
     const nextParticipationType = participationType || event.participationType || "solo";
 
     const updateData = {
@@ -282,6 +310,9 @@ router.put("/events/:id", isAdmin, upload.single("image"), async (req, res) => {
       venue,
       maxParticipants: maxParticipants ? parseInt(maxParticipants) : event.maxParticipants,
       participationType: nextParticipationType,
+       customQuestions:parseCustomQuestions(customQuestions
+        
+       )
     };
 
     if ((participationType || event.participationType) === "group" && teamSize) {
