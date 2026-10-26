@@ -100,7 +100,7 @@ router.post("/:eventId", isAuthenticated, async (req, res) => {
     const answerMap=new Map(
       customAnswers.map(item=>[
         String(item.questionId),
-        item.answer
+        item.response
       ])
     )
     const isVisible=(question)=>{
@@ -128,7 +128,7 @@ router.post("/:eventId", isAuthenticated, async (req, res) => {
     .filter(isVisible)
 
     for(const question of visibleQuestions){
-      const item=answer.map.get(String(question.questionId))
+      const item=answerMap.map.get(String(question.questionId))
       const empty=item===undefined || item===null || item ==="" || (Array.isArray(item) && item.length===0)
 
       if(question.required && empty){

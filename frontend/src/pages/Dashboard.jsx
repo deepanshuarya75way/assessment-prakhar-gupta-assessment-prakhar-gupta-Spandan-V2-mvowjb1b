@@ -172,12 +172,12 @@ export default function Dashboard() {
           }
 
           const wrappedName = doc.splitTextToSize(eventName, contentWidth - 140);
-          const customAswers=Array.isArray(reg.customAswers)
+          const customAnswers=Array.isArray(reg.customAswers)
           ?reg.customAnswers
           :[];
           customAnswers.forEach((item)=>{
             detailLines.push(
-              `${item.questionLabel || item.question || "Question"}:${item.answer ??"-"}`
+              `${item.questionLabel || item.question || "Question"}:${item.response ??"-"}`
             )
           })
           const wrappedDetails = detailLines.flatMap((line) => doc.splitTextToSize(line, contentWidth - 140));
